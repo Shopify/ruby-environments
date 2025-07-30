@@ -1,0 +1,6 @@
+name: ruby-environments
+
+up:
+  - node:
+      yarn: true
+      version: 22.17.0
