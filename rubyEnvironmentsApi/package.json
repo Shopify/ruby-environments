@@ -1,0 +1,31 @@
+{
+  "name": "@shopify/ruby-environments",
+  "version": "0.0.1",
+  "description": "API for the VS Code Ruby environments extension",
+  "main": "./out/index.js",
+  "types": "./out/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shopify/ruby-environments.git"
+  },
+  "author": "Shopify",
+  "license": "MIT",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "check-types": "tsc --noEmit",
+    "format": "eslint . --fix && prettier '**/*.{ts,json,md,yaml,yml}' --write",
+    "lint": "eslint . && prettier '**/*.{ts,json,md,yaml,yml}' --check"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "^1.102.0",
+    "@eslint/js": "^9.32.0",
+    "eslint": "^9.30.1",
+    "typescript-eslint": "^8.38.0",
+    "eslint-plugin-prettier": "^5.5.3",
+    "prettier": "^3.6.2",
+    "esbuild": "^0.25.3",
+    "typescript": "^5.8.3"
+  }
+}
