@@ -11,6 +11,10 @@ export class RubyStatus {
 
     this.item.name = "Ruby Environment";
     this.item.severity = vscode.LanguageStatusSeverity.Information;
+    this.item.command = {
+      title: "Select",
+      command: "ruby-environments.selectRubyVersion",
+    };
   }
 
   refresh(rubyDefinition: RubyDefinition | null) {

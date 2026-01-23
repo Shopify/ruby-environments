@@ -16,6 +16,8 @@ suite("RubyStatus", () => {
 
     assert.strictEqual(status.item.name, "Ruby Environment");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
+    assert.strictEqual(status.item.command?.title, "Select");
+    assert.strictEqual(status.item.command?.command, "ruby-environments.selectRubyVersion");
   });
 
   test("Refresh with null displays not detected", () => {

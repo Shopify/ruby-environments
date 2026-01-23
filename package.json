@@ -19,7 +19,26 @@
     "onLanguage:ruby"
   ],
   "main": "./dist/extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "ruby-environments.selectRubyVersion",
+        "title": "Select Ruby Installation",
+        "category": "Ruby"
+      }
+    ],
+    "configuration": {
+      "title": "Ruby Environments",
+      "properties": {
+        "rubyEnvironments.rubyVersion": {
+          "type": "string",
+          "default": null,
+          "description": "The Ruby version to use (e.g., '3.3.0'). If not set, will attempt to detect automatically.",
+          "scope": "window"
+        }
+      }
+    }
+  },
   "scripts": {
     "vscode:prepublish": "yarn run package",
     "compile": "yarn run check-types && yarn run lint && node esbuild.js && yarn run build:types",

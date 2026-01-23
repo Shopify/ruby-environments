@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import * as vscode from "vscode";
 import { suite, test, beforeEach, afterEach } from "mocha";
 import { activate, deactivate } from "../extension";
 import { FakeContext, createContext } from "./helpers";
@@ -57,12 +58,28 @@ suite("Extension Test Suite", () => {
       assert.strictEqual(eventFired, false, "event should not have fired yet");
     });
 
-    test("adds disposables to context subscriptions for disposal", () => {
+    test("registers emitter, status, config watcher, and command subscriptions", () => {
       assert.strictEqual(context.subscriptions.length, 0, "subscriptions should be empty initially");
 
       activate(context);
 
-      assert.strictEqual(context.subscriptions.length, 2, "should add emitter and status to subscriptions");
+      assert.strictEqual(
+        context.subscriptions.length,
+        4,
+        "Extension should register four subscriptions (emitter, status, config watcher, and command)",
+      );
+    });
+  });
+
+  suite("selectRubyVersion command", () => {
+    test("command is registered", async () => {
+      const mockContext = createContext();
+      activate(mockContext);
+
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(commands.includes("ruby-environments.selectRubyVersion"), "Command should be registered");
+
+      mockContext.dispose();
     });
   });
 
