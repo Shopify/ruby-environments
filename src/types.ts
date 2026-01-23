@@ -32,11 +32,16 @@ export interface RubyEnvironment {
 export type RubyDefinition = RubyError | RubyEnvironment;
 
 /**
+ * Represents an optional Ruby environment definition
+ */
+export type OptionalRubyDefinition = RubyDefinition | null;
+
+/**
  * Event data emitted when the Ruby environment changes
  */
 export interface RubyChangeEvent {
   workspace: vscode.WorkspaceFolder | undefined;
-  ruby: RubyDefinition;
+  ruby: OptionalRubyDefinition;
 }
 
 /**
@@ -46,7 +51,7 @@ export interface RubyEnvironmentsApi {
   /** Activate the extension for a specific workspace */
   activate: (workspace: vscode.WorkspaceFolder | undefined) => Promise<void>;
   /** Get the current Ruby definition */
-  getRuby: () => RubyDefinition | null;
+  getRuby: () => OptionalRubyDefinition;
   /** Event that fires when the Ruby environment changes */
   onDidRubyChange: vscode.Event<RubyChangeEvent>;
 }

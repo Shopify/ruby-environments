@@ -19,7 +19,26 @@
     "onLanguage:ruby"
   ],
   "main": "./dist/extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "ruby-environments.selectRuby",
+        "title": "Select Ruby Installation",
+        "category": "Ruby"
+      }
+    ],
+    "configuration": {
+      "title": "Ruby Environments",
+      "properties": {
+        "rubyEnvironments.rubyPath": {
+          "type": "string",
+          "default": null,
+          "description": "The path to a Ruby installation (e.g., '/usr/local/bin/ruby' or '/opt/rubies/ruby-3.3.0/bin/ruby'). If not set, will attempt to detect automatically.",
+          "scope": "machine-overridable"
+        }
+      }
+    }
+  },
   "scripts": {
     "vscode:prepublish": "yarn run package",
     "compile": "yarn run check-types && yarn run lint && node esbuild.js && yarn run build:types",

@@ -1,46 +1,42 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { afterEach } from "mocha";
+import { beforeEach, afterEach } from "mocha";
 import { RubyStatus } from "../status";
-import { RubyDefinition, JitType } from "../types";
+import { RubyDefinition, RubyChangeEvent, JitType } from "../types";
 
 suite("RubyStatus", () => {
   let status: RubyStatus;
+  let changeEmitter: vscode.EventEmitter<RubyChangeEvent>;
+
+  beforeEach(() => {
+    changeEmitter = new vscode.EventEmitter<RubyChangeEvent>();
+    status = new RubyStatus(changeEmitter.event);
+  });
 
   afterEach(() => {
     status.dispose();
+    changeEmitter.dispose();
   });
 
   test("Status is initialized with the right values", () => {
-    status = new RubyStatus();
-
     assert.strictEqual(status.item.name, "Ruby Environment");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
+    assert.strictEqual(status.item.command?.title, "Select");
+    assert.strictEqual(status.item.command?.command, "ruby-environments.selectRuby");
   });
 
-  test("Refresh with null displays not detected", () => {
-    status = new RubyStatus();
-    status.refresh(null);
-
-    assert.strictEqual(status.item.text, "Ruby: Not detected");
-    assert.strictEqual(status.item.detail, "No Ruby environment detected");
-    assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Warning);
-  });
-
-  test("Refresh with error displays error state", () => {
-    status = new RubyStatus();
+  test("Updates when event fires with error", () => {
     const rubyDefinition: RubyDefinition = {
       error: true,
     };
-    status.refresh(rubyDefinition);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition });
 
     assert.strictEqual(status.item.text, "Ruby: Error");
     assert.strictEqual(status.item.detail, "Error detecting Ruby environment");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Error);
   });
 
-  test("Refresh with Ruby version displays version", () => {
-    status = new RubyStatus();
+  test("Updates when event fires with Ruby version", () => {
     const rubyDefinition: RubyDefinition = {
       error: false,
       rubyVersion: "3.3.0",
@@ -48,14 +44,13 @@ suite("RubyStatus", () => {
       env: {},
       gemPath: [],
     };
-    status.refresh(rubyDefinition);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition });
 
     assert.strictEqual(status.item.text, "Ruby 3.3.0");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
   });
 
-  test("Refresh with Ruby version and YJIT displays both", () => {
-    status = new RubyStatus();
+  test("Updates when event fires with Ruby version and YJIT", () => {
     const rubyDefinition: RubyDefinition = {
       error: false,
       rubyVersion: "3.3.0",
@@ -63,14 +58,13 @@ suite("RubyStatus", () => {
       env: {},
       gemPath: [],
     };
-    status.refresh(rubyDefinition);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition });
 
     assert.strictEqual(status.item.text, "Ruby 3.3.0 (YJIT)");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
   });
 
-  test("Refresh with multiple JITs displays all", () => {
-    status = new RubyStatus();
+  test("Updates when event fires with multiple JITs", () => {
     const rubyDefinition: RubyDefinition = {
       error: false,
       rubyVersion: "3.4.0",
@@ -78,14 +72,13 @@ suite("RubyStatus", () => {
       env: {},
       gemPath: [],
     };
-    status.refresh(rubyDefinition);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition });
 
     assert.strictEqual(status.item.text, "Ruby 3.4.0 (YJIT, ZJIT)");
     assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
   });
 
-  test("Refresh updates existing status", () => {
-    status = new RubyStatus();
+  test("Updates correctly when multiple events fire", () => {
     const rubyDefinition1: RubyDefinition = {
       error: false,
       rubyVersion: "3.3.0",
@@ -93,7 +86,7 @@ suite("RubyStatus", () => {
       env: {},
       gemPath: [],
     };
-    status.refresh(rubyDefinition1);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition1 });
 
     assert.strictEqual(status.item.text, "Ruby 3.3.0 (YJIT)");
 
@@ -104,7 +97,7 @@ suite("RubyStatus", () => {
       env: {},
       gemPath: [],
     };
-    status.refresh(rubyDefinition2);
+    changeEmitter.fire({ workspace: undefined, ruby: rubyDefinition2 });
 
     assert.strictEqual(status.item.text, "Ruby 3.2.0");
   });

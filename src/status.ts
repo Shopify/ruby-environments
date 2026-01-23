@@ -1,19 +1,29 @@
 import * as vscode from "vscode";
-import { RubyDefinition } from "./types";
+import { RubyChangeEvent, OptionalRubyDefinition } from "./types";
 
-export class RubyStatus {
+export class RubyStatus implements vscode.Disposable {
   public readonly item: vscode.LanguageStatusItem;
+  private readonly subscription: vscode.Disposable;
 
-  constructor() {
+  constructor(onDidRubyChange: vscode.Event<RubyChangeEvent>) {
     this.item = vscode.languages.createLanguageStatusItem("ruby-environments-status", {
       language: "ruby",
     });
 
     this.item.name = "Ruby Environment";
     this.item.severity = vscode.LanguageStatusSeverity.Information;
+    this.item.command = {
+      title: "Select",
+      command: "ruby-environments.selectRuby",
+    };
+
+    // Subscribe to Ruby change events
+    this.subscription = onDidRubyChange((event) => {
+      this.refresh(event.ruby);
+    });
   }
 
-  refresh(rubyDefinition: RubyDefinition | null) {
+  private refresh(rubyDefinition: OptionalRubyDefinition) {
     if (rubyDefinition === null) {
       this.item.text = "Ruby: Not detected";
       this.item.detail = "No Ruby environment detected";
@@ -31,6 +41,7 @@ export class RubyStatus {
   }
 
   dispose() {
+    this.subscription.dispose();
     this.item.dispose();
   }
 }
