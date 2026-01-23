@@ -1,7 +1,8 @@
 import * as assert from "assert";
 import { suite, test, beforeEach, afterEach } from "mocha";
-import { activate, deactivate, RubyEnvironmentsApi } from "../extension";
+import { activate, deactivate } from "../extension";
 import { FakeContext, createContext } from "./helpers";
+import { RubyEnvironmentsApi } from "../types";
 
 suite("Extension Test Suite", () => {
   suite("activate", () => {
@@ -56,12 +57,12 @@ suite("Extension Test Suite", () => {
       assert.strictEqual(eventFired, false, "event should not have fired yet");
     });
 
-    test("adds event emitter to context subscriptions for disposal", () => {
+    test("adds disposables to context subscriptions for disposal", () => {
       assert.strictEqual(context.subscriptions.length, 0, "subscriptions should be empty initially");
 
       activate(context);
 
-      assert.strictEqual(context.subscriptions.length, 1, "should add emitter to subscriptions");
+      assert.strictEqual(context.subscriptions.length, 2, "should add emitter and status to subscriptions");
     });
   });
 
