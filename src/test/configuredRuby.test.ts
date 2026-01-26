@@ -26,9 +26,20 @@ function createMockWorkspace(config: Record<string, unknown>): WorkspaceInterfac
   };
 }
 
+function createMockLogger(): vscode.LogOutputChannel {
+  return {
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    debug: () => {},
+    trace: () => {},
+  } as unknown as vscode.LogOutputChannel;
+}
+
 suite("ConfiguredRuby", () => {
   let versionManager: ConfiguredRuby;
   let mockContext: vscode.ExtensionContext;
+  let mockLogger: vscode.LogOutputChannel;
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
@@ -37,6 +48,7 @@ suite("ConfiguredRuby", () => {
     mockContext = {
       extensionUri: vscode.Uri.file(__dirname + "/../.."),
     } as vscode.ExtensionContext;
+    mockLogger = createMockLogger();
   });
 
   afterEach(() => {
@@ -45,7 +57,7 @@ suite("ConfiguredRuby", () => {
 
   test("has correct identifier and name", () => {
     const mockWorkspace = createMockWorkspace({});
-    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger);
 
     assert.strictEqual(versionManager.identifier, "configured");
     assert.strictEqual(versionManager.name, "Configured Ruby");
@@ -60,7 +72,7 @@ suite("ConfiguredRuby", () => {
       name: "test",
       index: 0,
     };
-    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, workspaceFolder);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger, workspaceFolder);
 
     const envStub = [
       "3.3.0",
@@ -104,7 +116,7 @@ suite("ConfiguredRuby", () => {
     const mockWorkspace = createMockWorkspace({
       rubyExecutablePath: "/nonexistent/ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger);
 
     sandbox.stub(common, "asyncExec").rejects(new Error("Command failed"));
 
@@ -117,7 +129,7 @@ suite("ConfiguredRuby", () => {
     const mockWorkspace = createMockWorkspace({
       rubyExecutablePath: "/custom/path/to/ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger);
 
     const envStub = ["3.2.0", "/gems", "false"].join(FIELD_SEPARATOR);
     const execStub = sandbox.stub(common, "asyncExec").resolves({
@@ -138,7 +150,7 @@ suite("ConfiguredRuby", () => {
     const mockWorkspace = createMockWorkspace({
       rubyExecutablePath: "ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger);
 
     sandbox.stub(common, "asyncExec").resolves({
       stdout: "",
