@@ -1,31 +1,15 @@
 import * as vscode from "vscode";
 import { RubyStatus } from "./status";
-import { RubyChangeEvent, RubyDefinition, RubyEnvironmentsApi } from "./types";
+import { RubyChangeEvent, RubyEnvironmentsApi } from "./types";
+import { ConfiguredRuby } from "./configuredRuby";
 
 // Event emitter for Ruby environment changes
 const rubyChangeEmitter = new vscode.EventEmitter<RubyChangeEvent>();
 
-function getRubyDefinitionFromConfig(): RubyDefinition {
-  const config = vscode.workspace.getConfiguration("rubyEnvironments");
-  const rubyVersion = config.get<string | null>("rubyVersion");
-
-  if (!rubyVersion) {
-    // Return mock data if not configured
-    return {
-      error: false,
-      rubyVersion: "3.3.0",
-      availableJITs: [],
-      env: {},
-      gemPath: [],
-    };
-  }
-
-  return {
-    error: true,
-  };
-}
-
 export function activate(context: vscode.ExtensionContext): RubyEnvironmentsApi {
+  // Create the version manager
+  const versionManager = new ConfiguredRuby();
+
   // Ensure the event emitter is disposed when the extension is deactivated
   context.subscriptions.push(rubyChangeEmitter);
 
@@ -33,14 +17,14 @@ export function activate(context: vscode.ExtensionContext): RubyEnvironmentsApi 
   const status = new RubyStatus();
   context.subscriptions.push(status);
 
-  // Load Ruby definition from configuration
-  let currentRubyDefinition = getRubyDefinitionFromConfig();
+  // Load Ruby definition from version manager
+  let currentRubyDefinition = versionManager.getRubyDefinition();
   status.refresh(currentRubyDefinition);
 
   // Watch for configuration changes
   const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration("rubyEnvironments")) {
-      currentRubyDefinition = getRubyDefinitionFromConfig();
+      currentRubyDefinition = versionManager.getRubyDefinition();
       status.refresh(currentRubyDefinition);
     }
   });
