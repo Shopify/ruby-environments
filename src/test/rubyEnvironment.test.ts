@@ -68,5 +68,12 @@ suite("RubyEnvironment Test Suite", () => {
       // Since no configuration is set in tests, it should return null
       assert.strictEqual(result, null, "getRuby should return null when no configuration is set");
     });
+
+    test("registers selectRubyVersion command", async () => {
+      new RubyEnvironment(context, mockLogger);
+
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(commands.includes("ruby-environments.selectRubyVersion"), "Command should be registered");
+    });
   });
 });
