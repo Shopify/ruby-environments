@@ -40,9 +40,6 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
     // Setup watchers and commands
     this.setupConfigWatcher();
     this.registerCommands();
-
-    // Initial activation
-    void this.activateRuby();
   }
 
   async activate(): Promise<void> {
