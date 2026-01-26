@@ -1,4 +1,4 @@
-// Using .map.compact just so that it doesn't crash immediately on Ruby 2.6
+# Using .map.compact just so that it doesn't crash immediately on Ruby 2.6
 env = ENV.map do |k, v|
   utf_8_value = v.dup.force_encoding(Encoding::UTF_8)
   "#{k}RUBY_ENVIRONMENTS_VS#{utf_8_value}" if utf_8_value.valid_encoding?
