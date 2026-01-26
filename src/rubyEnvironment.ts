@@ -8,18 +8,22 @@ import { VersionManager } from "./versionManager";
  * Main class that manages the Ruby environment state and lifecycle
  */
 export class RubyEnvironment implements RubyEnvironmentsApi {
-  private versionManager: VersionManager;
+  private versionManager: VersionManager | null = null;
   private currentRubyDefinition: RubyDefinition | null = null;
+  private workspaceFolder: vscode.WorkspaceFolder | undefined;
+  private status: RubyStatus | null = null;
+
   private readonly logger: vscode.LogOutputChannel;
   private readonly context: vscode.ExtensionContext;
-  private readonly workspaceFolder: vscode.WorkspaceFolder | undefined;
-  private readonly status: RubyStatus;
   // Event emitter for Ruby environment changes
   private readonly rubyChangeEmitter = new vscode.EventEmitter<RubyChangeEvent>();
 
   constructor(context: vscode.ExtensionContext, logger: vscode.LogOutputChannel) {
     this.context = context;
     this.logger = logger;
+  }
+
+  async activate(): Promise<void> {
     this.workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 
     this.logger.info("Ruby Environments extension activating...");
@@ -35,14 +39,12 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
 
     // Create the status item
     this.status = new RubyStatus();
-    context.subscriptions.push(this.status);
+    this.context.subscriptions.push(this.status);
 
     // Setup watchers and commands
     this.setupConfigWatcher();
     this.registerCommands();
-  }
 
-  async activate(): Promise<void> {
     this.logger.info("Activating Ruby environment...");
     this.currentRubyDefinition = await this.versionManager.activate();
 

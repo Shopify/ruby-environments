@@ -2,23 +2,9 @@ import * as assert from "assert";
 import { suite, test, beforeEach, afterEach } from "mocha";
 import * as vscode from "vscode";
 import { RubyEnvironment } from "../rubyEnvironment";
+import { FakeContext, createContext } from "./helpers";
 
 suite("RubyEnvironment Test Suite", () => {
-  type FakeContext = vscode.ExtensionContext & { dispose: () => void };
-
-  function createContext() {
-    const subscriptions: vscode.Disposable[] = [];
-
-    return {
-      subscriptions,
-      dispose: () => {
-        subscriptions.forEach((subscription) => {
-          subscription.dispose();
-        });
-      },
-    } as unknown as FakeContext;
-  }
-
   function createMockLogger(): vscode.LogOutputChannel {
     return {
       info: () => {},
@@ -50,14 +36,27 @@ suite("RubyEnvironment Test Suite", () => {
       assert.strictEqual(typeof rubyEnvironment.getRuby, "function", "getRuby should be a function");
     });
 
-    test("registers config watcher, status item, and command subscriptions", () => {
-      new RubyEnvironment(context, mockLogger);
+    suite("activate", () => {
+      test("registers config watcher, status item, and command subscriptions", async () => {
+        const rubyEnvironment = new RubyEnvironment(context, mockLogger);
 
-      assert.strictEqual(
-        context.subscriptions.length,
-        3,
-        "Extension should register three subscriptions (status item, config watcher, and command)",
-      );
+        await rubyEnvironment.activate();
+
+        assert.strictEqual(
+          context.subscriptions.length,
+          3,
+          "Extension should register three subscriptions (status item, config watcher, and command)",
+        );
+      });
+
+      test("registers selectRubyVersion command", async () => {
+        const rubyEnvironment = new RubyEnvironment(context, mockLogger);
+
+        await rubyEnvironment.activate();
+
+        const commands = await vscode.commands.getCommands(true);
+        assert.ok(commands.includes("ruby-environments.selectRubyVersion"), "Command should be registered");
+      });
     });
 
     test("returns initial Ruby definition from configuration", () => {
@@ -67,13 +66,6 @@ suite("RubyEnvironment Test Suite", () => {
 
       // Since no configuration is set in tests, it should return null
       assert.strictEqual(result, null, "getRuby should return null when no configuration is set");
-    });
-
-    test("registers selectRubyVersion command", async () => {
-      new RubyEnvironment(context, mockLogger);
-
-      const commands = await vscode.commands.getCommands(true);
-      assert.ok(commands.includes("ruby-environments.selectRubyVersion"), "Command should be registered");
     });
   });
 });

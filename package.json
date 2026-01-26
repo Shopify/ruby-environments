@@ -15,11 +15,7 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [
-    "onLanguage:ruby",
-    "workspaceContains:Gemfile",
-    "workspaceContains:gems.rb"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
