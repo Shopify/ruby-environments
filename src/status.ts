@@ -27,7 +27,7 @@ export class RubyStatus {
       this.item.detail = "Error detecting Ruby environment";
       this.item.severity = vscode.LanguageStatusSeverity.Error;
     } else {
-      const version = rubyDefinition.rubyVersion || "unknown";
+      const version = rubyDefinition.rubyVersion;
       const jitStatus = rubyDefinition.availableJITs.length > 0 ? ` (${rubyDefinition.availableJITs.join(", ")})` : "";
       this.item.text = `Ruby ${version}${jitStatus}`;
       this.item.severity = vscode.LanguageStatusSeverity.Information;

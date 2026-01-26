@@ -74,13 +74,11 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
     if (this.currentRubyDefinition.error) {
       this.logger.error("Failed to activate Ruby environment");
     } else {
-      this.logger.info(`Ruby activated: ${this.currentRubyDefinition.rubyVersion || "unknown version"}`);
+      this.logger.info(`Ruby activated: ${this.currentRubyDefinition.rubyVersion}`);
       if (this.currentRubyDefinition.availableJITs.length > 0) {
         this.logger.info(`JITs available: ${this.currentRubyDefinition.availableJITs.join(", ")}`);
       }
-      if (this.currentRubyDefinition.gemPath) {
-        this.logger.debug(`Gem paths: ${this.currentRubyDefinition.gemPath.join(", ")}`);
-      }
+      this.logger.debug(`Gem paths: ${this.currentRubyDefinition.gemPath.join(", ")}`);
     }
 
     this.status.refresh(this.currentRubyDefinition);
