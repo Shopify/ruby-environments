@@ -51,7 +51,7 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
     } else {
       this.logger.info(`Ruby activated: ${this.currentRubyDefinition.rubyVersion}`);
       if (this.currentRubyDefinition.availableJITs.length > 0) {
-        this.logger.info(`JITs available: ${this.currentRubyDefinition.availableJITs.join(", ")}`);
+        this.logger.info(`Available JITs: ${this.currentRubyDefinition.availableJITs.join(", ")}`);
       }
       this.logger.debug(`Gem paths: ${this.currentRubyDefinition.gemPath.join(", ")}`);
     }

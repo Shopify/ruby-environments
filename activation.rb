@@ -4,6 +4,6 @@ env = ENV.map do |k, v|
   "#{k}RUBY_ENVIRONMENTS_VS#{utf_8_value}" if utf_8_value.valid_encoding?
 end.compact
 
-env.unshift(RUBY_VERSION, Gem.path.join(","), !!defined?(RubyVM::YJIT))
+env.unshift(RUBY_VERSION, Gem.path.join(","), !!defined?(RubyVM::YJIT), !!defined?(RubyVM::ZJIT))
 
 STDERR.print("RUBY_ENVIRONMENTS_ACTIVATION_SEPARATOR#{env.join("RUBY_ENVIRONMENTS_FS")}RUBY_ENVIRONMENTS_ACTIVATION_SEPARATOR")

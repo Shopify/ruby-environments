@@ -109,22 +109,23 @@ export class ConfiguredRuby implements VersionManager {
     }
 
     this.logger.debug("Successfully parsed activation separator");
-    const [version, gemPath, yjit, ...envEntries] = activationContent[1].split(FIELD_SEPARATOR);
+    const [version, gemPath, yjit, zjit, ...envEntries] = activationContent[1].split(FIELD_SEPARATOR);
 
     this.logger.debug(`Parsed Ruby version: ${version}`);
     this.logger.debug(`Parsed gem paths: ${gemPath}`);
     this.logger.debug(`Parsed YJIT status: ${yjit}`);
+    this.logger.debug(`Parsed ZJIT status: ${zjit}`);
     this.logger.debug(`Parsed ${envEntries.length} environment variables`);
 
     const availableJITs: JitType[] = [];
-
-    if (yjit) availableJITs.push(JitType.YJIT);
+    if (yjit === "true") availableJITs.push(JitType.YJIT);
+    if (zjit === "true") availableJITs.push(JitType.ZJIT);
 
     return {
       error: false,
       rubyVersion: version,
       gemPath: gemPath.split(","),
-      availableJITs: availableJITs,
+      availableJITs,
       env: Object.fromEntries(envEntries.map((entry: string) => entry.split(VALUE_SEPARATOR))) as NodeJS.ProcessEnv,
     };
   }

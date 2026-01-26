@@ -110,4 +110,19 @@ suite("RubyStatus", () => {
 
     assert.strictEqual(status.item.text, "Ruby 3.2.0");
   });
+
+  test("Refresh with multiple JITs displays all", () => {
+    status = new RubyStatus();
+    const rubyDefinition: RubyDefinition = {
+      error: false,
+      rubyVersion: "4.0.0",
+      availableJITs: [JitType.YJIT, JitType.ZJIT],
+      env: {},
+      gemPath: [],
+    };
+    status.refresh(rubyDefinition);
+
+    assert.strictEqual(status.item.text, "Ruby 4.0.0 (YJIT, ZJIT)");
+    assert.strictEqual(status.item.severity, vscode.LanguageStatusSeverity.Information);
+  });
 });

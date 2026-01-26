@@ -154,7 +154,6 @@ To ensure your extension loads after Ruby Environments, add it as a dependency i
 }
 ```
 
-
 ## Development
 
 ### Prerequisites

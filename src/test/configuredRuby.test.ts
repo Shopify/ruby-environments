@@ -78,6 +78,7 @@ suite("ConfiguredRuby", () => {
       "3.3.0",
       "/path/to/gems,/another/path",
       "true",
+      "false",
       `PATH${VALUE_SEPARATOR}/usr/bin`,
       `HOME${VALUE_SEPARATOR}/home/user`,
     ].join(FIELD_SEPARATOR);
@@ -131,7 +132,7 @@ suite("ConfiguredRuby", () => {
     });
     versionManager = new ConfiguredRuby(mockWorkspace, mockContext, mockLogger);
 
-    const envStub = ["3.2.0", "/gems", "false"].join(FIELD_SEPARATOR);
+    const envStub = ["3.2.0", "/gems", "false", "false"].join(FIELD_SEPARATOR);
     const execStub = sandbox.stub(common, "asyncExec").resolves({
       stdout: "",
       stderr: `${ACTIVATION_SEPARATOR}${envStub}${ACTIVATION_SEPARATOR}`,
