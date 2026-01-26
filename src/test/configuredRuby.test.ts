@@ -1,5 +1,14 @@
 import * as assert from "assert";
+import { beforeEach, afterEach } from "mocha";
+import * as vscode from "vscode";
+import sinon from "sinon";
 import { ConfiguredRuby, WorkspaceInterface } from "../configuredRuby";
+import * as common from "../common";
+import { ACTIVATION_SEPARATOR, FIELD_SEPARATOR, VALUE_SEPARATOR } from "../configuredRuby";
+import { JitType } from "../types";
+
+// Re-export the constants for testing
+export { ACTIVATION_SEPARATOR, FIELD_SEPARATOR, VALUE_SEPARATOR };
 
 type MockWorkspaceConfiguration = {
   get<T>(section: string, defaultValue?: T): T | undefined;
@@ -19,62 +28,125 @@ function createMockWorkspace(config: Record<string, unknown>): WorkspaceInterfac
 
 suite("ConfiguredRuby", () => {
   let versionManager: ConfiguredRuby;
+  let mockContext: vscode.ExtensionContext;
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    // Create a minimal mock context
+    mockContext = {
+      extensionUri: vscode.Uri.file(__dirname + "/../.."),
+    } as vscode.ExtensionContext;
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
 
   test("has correct identifier and name", () => {
     const mockWorkspace = createMockWorkspace({});
-    versionManager = new ConfiguredRuby(mockWorkspace);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
 
     assert.strictEqual(versionManager.identifier, "configured");
     assert.strictEqual(versionManager.name, "Configured Ruby");
   });
 
-  test("returns null when no configuration is set", () => {
-    const mockWorkspace = createMockWorkspace({});
-    versionManager = new ConfiguredRuby(mockWorkspace);
-
-    const result = versionManager.getRubyDefinition();
-
-    assert.strictEqual(result, null);
-  });
-
-  test("returns Ruby definition when version is configured", () => {
+  test("activate executes Ruby and returns result", async () => {
     const mockWorkspace = createMockWorkspace({
-      rubyVersion: "3.3.0",
+      rubyExecutablePath: "ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace);
+    const workspaceFolder = {
+      uri: vscode.Uri.file("/test/workspace"),
+      name: "test",
+      index: 0,
+    };
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext, workspaceFolder);
 
-    const result = versionManager.getRubyDefinition();
+    const envStub = [
+      "3.3.0",
+      "/path/to/gems,/another/path",
+      "true",
+      `PATH${VALUE_SEPARATOR}/usr/bin`,
+      `HOME${VALUE_SEPARATOR}/home/user`,
+    ].join(FIELD_SEPARATOR);
 
-    assert.ok(result, "Should return a RubyDefinition");
+    const execStub = sandbox.stub(common, "asyncExec").resolves({
+      stdout: "",
+      stderr: `${ACTIVATION_SEPARATOR}${envStub}${ACTIVATION_SEPARATOR}`,
+    });
+
+    const result = await versionManager.activate();
+
+    const activationUri = vscode.Uri.joinPath(mockContext.extensionUri, "activation.rb");
+    const expectedCommand = `ruby -W0 -EUTF-8:UTF-8 '${activationUri.fsPath}'`;
+
+    // We must not set the shell on Windows
+    const shell = common.isWindows() ? undefined : vscode.env.shell;
+
+    assert.ok(
+      execStub.calledOnceWithExactly(expectedCommand, {
+        cwd: workspaceFolder.uri.fsPath,
+        shell,
+        env: process.env,
+      }),
+      `Expected asyncExec to be called with correct arguments`,
+    );
+
     assert.strictEqual(result.error, false);
     assert.strictEqual(result.rubyVersion, "3.3.0");
-    assert.deepStrictEqual(result.availableJITs, []);
+    assert.deepStrictEqual(result.availableJITs, [JitType.YJIT]);
+    assert.deepStrictEqual(result.gemPath, ["/path/to/gems", "/another/path"]);
+    assert.strictEqual(result.env?.PATH, "/usr/bin");
+    assert.strictEqual(result.env?.HOME, "/home/user");
   });
 
-  test("returns Ruby definition with required fields", () => {
+  test("activate returns error when Ruby executable fails", async () => {
     const mockWorkspace = createMockWorkspace({
-      rubyVersion: "3.2.0",
+      rubyExecutablePath: "/nonexistent/ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
 
-    const result = versionManager.getRubyDefinition();
+    sandbox.stub(common, "asyncExec").rejects(new Error("Command failed"));
 
-    assert.ok(result, "Should return a RubyDefinition");
-    assert.strictEqual(result.error, false);
-    assert.strictEqual(result.rubyVersion, "3.2.0");
-    assert.deepStrictEqual(result.availableJITs, []);
-    assert.deepStrictEqual(result.env, {});
-    assert.deepStrictEqual(result.gemPath, []);
+    const result = await versionManager.activate();
+
+    assert.strictEqual(result.error, true);
   });
 
-  test("returns null when version is empty string", () => {
+  test("activate uses custom Ruby executable path", async () => {
     const mockWorkspace = createMockWorkspace({
-      rubyVersion: "",
+      rubyExecutablePath: "/custom/path/to/ruby",
     });
-    versionManager = new ConfiguredRuby(mockWorkspace);
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
 
-    const result = versionManager.getRubyDefinition();
+    const envStub = ["3.2.0", "/gems", "false"].join(FIELD_SEPARATOR);
+    const execStub = sandbox.stub(common, "asyncExec").resolves({
+      stdout: "",
+      stderr: `${ACTIVATION_SEPARATOR}${envStub}${ACTIVATION_SEPARATOR}`,
+    });
 
-    assert.strictEqual(result, null);
+    await versionManager.activate();
+
+    const activationUri = vscode.Uri.joinPath(mockContext.extensionUri, "activation.rb");
+    const expectedCommand = `/custom/path/to/ruby -W0 -EUTF-8:UTF-8 '${activationUri.fsPath}'`;
+
+    assert.ok(execStub.calledOnce);
+    assert.ok(execStub.firstCall.args[0] === expectedCommand);
+  });
+
+  test("activate returns error when activation output is malformed", async () => {
+    const mockWorkspace = createMockWorkspace({
+      rubyExecutablePath: "ruby",
+    });
+    versionManager = new ConfiguredRuby(mockWorkspace, mockContext);
+
+    sandbox.stub(common, "asyncExec").resolves({
+      stdout: "",
+      stderr: "Invalid output without separators",
+    });
+
+    const result = await versionManager.activate();
+
+    assert.strictEqual(result.error, true);
   });
 });

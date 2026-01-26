@@ -15,7 +15,7 @@ export interface VersionManager {
   readonly name: string;
 
   /**
-   * Get the Ruby definition from this version manager
+   * Activate the Ruby environment and return the Ruby definition
    */
-  getRubyDefinition(): RubyDefinition | null;
+  activate(): Promise<RubyDefinition>;
 }
