@@ -43,7 +43,20 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
   }
 
   async activate(): Promise<void> {
-    await this.activateRuby();
+    this.logger.info("Activating Ruby environment...");
+    this.currentRubyDefinition = await this.versionManager.activate();
+
+    if (this.currentRubyDefinition.error) {
+      this.logger.error("Failed to activate Ruby environment");
+    } else {
+      this.logger.info(`Ruby activated: ${this.currentRubyDefinition.rubyVersion}`);
+      if (this.currentRubyDefinition.availableJITs.length > 0) {
+        this.logger.info(`JITs available: ${this.currentRubyDefinition.availableJITs.join(", ")}`);
+      }
+      this.logger.debug(`Gem paths: ${this.currentRubyDefinition.gemPath.join(", ")}`);
+    }
+
+    this.status.refresh(this.currentRubyDefinition);
   }
 
   getRuby(): RubyDefinition | null {
@@ -67,25 +80,8 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
     return this.rubyChangeEmitter.event;
   }
 
-  private async activateRuby(): Promise<void> {
-    this.logger.info("Activating Ruby environment...");
-    this.currentRubyDefinition = await this.versionManager.activate();
-
-    if (this.currentRubyDefinition.error) {
-      this.logger.error("Failed to activate Ruby environment");
-    } else {
-      this.logger.info(`Ruby activated: ${this.currentRubyDefinition.rubyVersion}`);
-      if (this.currentRubyDefinition.availableJITs.length > 0) {
-        this.logger.info(`JITs available: ${this.currentRubyDefinition.availableJITs.join(", ")}`);
-      }
-      this.logger.debug(`Gem paths: ${this.currentRubyDefinition.gemPath.join(", ")}`);
-    }
-
-    this.status.refresh(this.currentRubyDefinition);
-  }
-
   private setupConfigWatcher(): void {
-    const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+    const configWatcher = vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration("rubyEnvironments")) {
         this.logger.info("Configuration changed, reactivating Ruby environment");
         // Recreate version manager if the version manager type changed
@@ -93,7 +89,7 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
           this.versionManager = this.createVersionManager();
           this.logger.info(`Switched to version manager: ${this.versionManager.name}`);
         }
-        void this.activateRuby();
+        await this.activate();
       }
     });
     this.context.subscriptions.push(configWatcher);
