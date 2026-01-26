@@ -4,23 +4,6 @@ import { RubyChangeEvent, RubyDefinition, RubyEnvironmentsApi } from "./types";
 import { ConfiguredRuby } from "./configuredRuby";
 import { VersionManager } from "./versionManager";
 
-function createVersionManager(
-  context: vscode.ExtensionContext,
-  logger: vscode.LogOutputChannel,
-  workspaceFolder: vscode.WorkspaceFolder | undefined,
-): VersionManager {
-  const config = vscode.workspace.getConfiguration("rubyEnvironments");
-  const versionManager = config.get<string>("versionManager", "configured");
-
-  switch (versionManager) {
-    case "configured":
-      return new ConfiguredRuby(vscode.workspace, context, logger, workspaceFolder);
-    default:
-      // Default to configured if unknown version manager
-      return new ConfiguredRuby(vscode.workspace, context, logger, workspaceFolder);
-  }
-}
-
 /**
  * Main class that manages the Ruby environment state and lifecycle
  */
@@ -47,7 +30,7 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
     }
 
     // Create the version manager
-    this.versionManager = createVersionManager(context, logger, this.workspaceFolder);
+    this.versionManager = this.createVersionManager();
     this.logger.info(`Using version manager: ${this.versionManager.name}`);
 
     // Create the status item
@@ -68,6 +51,19 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
 
   getRuby(): RubyDefinition | null {
     return this.currentRubyDefinition;
+  }
+
+  private createVersionManager(): VersionManager {
+    const config = vscode.workspace.getConfiguration("rubyEnvironments");
+    const versionManager = config.get<string>("versionManager", "configured");
+
+    switch (versionManager) {
+      case "configured":
+        return new ConfiguredRuby(vscode.workspace, this.context, this.logger, this.workspaceFolder);
+      default:
+        // Default to configured if unknown version manager
+        return new ConfiguredRuby(vscode.workspace, this.context, this.logger, this.workspaceFolder);
+    }
   }
 
   get onDidRubyChange(): vscode.Event<RubyChangeEvent> {
@@ -99,7 +95,7 @@ export class RubyEnvironment implements RubyEnvironmentsApi {
         this.logger.info("Configuration changed, reactivating Ruby environment");
         // Recreate version manager if the version manager type changed
         if (e.affectsConfiguration("rubyEnvironments.versionManager")) {
-          this.versionManager = createVersionManager(this.context, this.logger, this.workspaceFolder);
+          this.versionManager = this.createVersionManager();
           this.logger.info(`Switched to version manager: ${this.versionManager.name}`);
         }
         void this.activateRuby();
