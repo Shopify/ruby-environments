@@ -15,11 +15,7 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [
-    "onLanguage:ruby",
-    "workspaceContains:Gemfile",
-    "workspaceContains:gems.rb"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -32,10 +28,22 @@
     "configuration": {
       "title": "Ruby Environments",
       "properties": {
-        "rubyEnvironments.rubyVersion": {
+        "rubyEnvironments.versionManager": {
           "type": "string",
-          "default": null,
-          "description": "The Ruby version to use (e.g., '3.3.0'). If not set, will attempt to detect automatically.",
+          "default": "configured",
+          "enum": [
+            "configured"
+          ],
+          "enumDescriptions": [
+            "Use the Ruby executable path configured in settings"
+          ],
+          "description": "The version manager to use for Ruby environment activation.",
+          "scope": "window"
+        },
+        "rubyEnvironments.rubyExecutablePath": {
+          "type": "string",
+          "default": "ruby",
+          "description": "Path to the Ruby executable. Can be an absolute path or a command in PATH.",
           "scope": "window"
         }
       }
@@ -61,20 +69,22 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/sinon": "^21.0.0",
     "@types/vscode": "^1.102.0",
-    "@eslint/js": "^9.32.0",
-    "eslint": "^9.30.1",
-    "typescript-eslint": "^8.38.0",
-    "eslint-plugin-prettier": "^5.5.3",
-    "prettier": "^3.6.2",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.3",
+    "eslint": "^9.30.1",
+    "eslint-plugin-prettier": "^5.5.3",
     "npm-run-all": "^4.1.5",
     "ovsx": "^0.10.5",
-    "typescript": "^5.8.3"
+    "prettier": "^3.6.2",
+    "sinon": "^21.0.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
   }
 }
