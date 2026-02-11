@@ -1,6 +1,12 @@
 import * as vscode from "vscode";
 import { RubyStatus } from "./status";
-import { RubyChangeEvent, OptionalRubyDefinition, RubyEnvironmentsApi } from "./types";
+import { RubyChangeEvent, OptionalRubyDefinition, RubyEnvironmentsApi, RubyDefinition, JitType } from "./types";
+import { asyncExec, isWindows } from "./common";
+
+// Separators for parsing activation script output
+export const ACTIVATION_SEPARATOR = "RUBY_ENVIRONMENTS_ACTIVATION_SEPARATOR";
+export const VALUE_SEPARATOR = "RUBY_ENVIRONMENTS_VS";
+export const FIELD_SEPARATOR = "RUBY_ENVIRONMENTS_FS";
 
 export class RubyEnvironmentManager implements RubyEnvironmentsApi {
   private readonly context: vscode.ExtensionContext;
@@ -18,9 +24,9 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     context.subscriptions.push(this.changeEmitter);
 
     // Watch for configuration changes
-    const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+    const configWatcher = vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration("rubyEnvironments")) {
-        this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
+        await this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
       }
     });
     context.subscriptions.push(configWatcher);
@@ -32,10 +38,9 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     context.subscriptions.push(selectRuby);
   }
 
-  activate(workspace: vscode.WorkspaceFolder | undefined): Promise<void> {
+  async activate(workspace: vscode.WorkspaceFolder | undefined): Promise<void> {
     // Load Ruby definition from configuration and emit change event
-    this.updateRubyDefinition(workspace);
-    return Promise.resolve();
+    await this.updateRubyDefinition(workspace);
   }
 
   getRuby(): OptionalRubyDefinition {
@@ -46,24 +51,48 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     return this.changeEmitter.event;
   }
 
-  private updateRubyDefinition(workspace: vscode.WorkspaceFolder | undefined): void {
-    this.currentRubyDefinition = this.getRubyDefinitionFromConfig();
+  private async updateRubyDefinition(workspace: vscode.WorkspaceFolder | undefined): Promise<void> {
+    this.currentRubyDefinition = await this.getRubyDefinitionFromConfig(workspace);
     this.changeEmitter.fire({
       workspace: workspace,
       ruby: this.currentRubyDefinition,
     });
   }
 
-  private getRubyDefinitionFromConfig(): OptionalRubyDefinition {
+  private async getRubyDefinitionFromConfig(
+    workspace: vscode.WorkspaceFolder | undefined,
+  ): Promise<OptionalRubyDefinition> {
     const rubyPath = this.getRubyPath();
 
     if (!rubyPath) {
       return null;
     }
 
-    return {
-      error: true,
-    };
+    try {
+      const activationScriptUri = vscode.Uri.joinPath(this.context.extensionUri, "activation.rb");
+
+      const command = `${rubyPath} -W0 -EUTF-8:UTF-8 '${activationScriptUri.fsPath}'`;
+
+      let shell: string | undefined;
+      // Use the user's preferred shell (except on Windows) to ensure proper environment sourcing
+      if (vscode.env.shell.length > 0 && !isWindows()) {
+        shell = vscode.env.shell;
+      }
+
+      const cwd = workspace?.uri.fsPath || process.cwd();
+
+      const result = await asyncExec(command, {
+        cwd,
+        shell,
+        env: process.env,
+      });
+
+      return this.parseActivationResult(result.stderr);
+    } catch (_error: unknown) {
+      return {
+        error: true,
+      };
+    }
   }
 
   private getRubyPath(): string | undefined {
@@ -75,6 +104,30 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     const configuredRubyPath = config.get<string>("rubyPath");
 
     return workspaceRubyPath || configuredRubyPath;
+  }
+
+  private parseActivationResult(stderr: string): RubyDefinition {
+    const activationContent = new RegExp(`${ACTIVATION_SEPARATOR}([^]*)${ACTIVATION_SEPARATOR}`).exec(stderr);
+
+    if (!activationContent) {
+      return {
+        error: true,
+      };
+    }
+
+    const [version, gemPath, yjit, ...envEntries] = activationContent[1].split(FIELD_SEPARATOR);
+
+    const availableJITs: JitType[] = [];
+
+    if (yjit) availableJITs.push(JitType.YJIT);
+
+    return {
+      error: false,
+      rubyVersion: version,
+      gemPath: gemPath.split(","),
+      availableJITs: availableJITs,
+      env: Object.fromEntries(envEntries.map((entry: string) => entry.split(VALUE_SEPARATOR))) as NodeJS.ProcessEnv,
+    };
   }
 
   private async selectRuby(): Promise<void> {
@@ -129,7 +182,7 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
 
     if (newPath) {
       await this.context.workspaceState.update("rubyPath", newPath);
-      this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
+      await this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
       vscode.window.showInformationMessage(`Ruby executable path updated to ${newPath}`);
     }
   }

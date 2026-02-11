@@ -8,6 +8,7 @@ export function createContext(): FakeContext {
 
   return {
     subscriptions,
+    extensionUri: vscode.Uri.file(__dirname + "/../.."),
     workspaceState: {
       get: <T>(key: string): T | undefined => {
         return workspaceStateStorage.get(key) as T | undefined;
