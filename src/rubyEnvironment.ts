@@ -1,67 +1,50 @@
 import * as vscode from "vscode";
-import { RubyStatus } from "./status";
-import { RubyChangeEvent, OptionalRubyDefinition, RubyEnvironmentsApi, RubyDefinition, JitType } from "./types";
+import { RubyChangeEvent, OptionalRubyDefinition, RubyDefinition, JitType } from "./types";
 import { asyncExec, isWindows } from "./common";
+import { WorkspaceContext } from "./workspaceContext";
 
 // Separators for parsing activation script output
 export const ACTIVATION_SEPARATOR = "RUBY_ENVIRONMENTS_ACTIVATION_SEPARATOR";
 export const VALUE_SEPARATOR = "RUBY_ENVIRONMENTS_VS";
 export const FIELD_SEPARATOR = "RUBY_ENVIRONMENTS_FS";
 
-export class RubyEnvironmentManager implements RubyEnvironmentsApi {
+/**
+ * Manages the Ruby environment for a single workspace context
+ */
+export class RubyEnvironment {
   private readonly context: vscode.ExtensionContext;
-  private readonly status: RubyStatus;
+  private readonly workspace: WorkspaceContext;
   private readonly changeEmitter: vscode.EventEmitter<RubyChangeEvent>;
   private currentRubyDefinition: OptionalRubyDefinition = null;
 
-  constructor(context: vscode.ExtensionContext) {
+  constructor(
+    context: vscode.ExtensionContext,
+    workspace: WorkspaceContext,
+    changeEmitter: vscode.EventEmitter<RubyChangeEvent>,
+  ) {
     this.context = context;
-    this.changeEmitter = new vscode.EventEmitter<RubyChangeEvent>();
-    this.status = new RubyStatus(this.changeEmitter.event);
-
-    // Register disposables
-    context.subscriptions.push(this.status);
-    context.subscriptions.push(this.changeEmitter);
-
-    // Watch for configuration changes
-    const configWatcher = vscode.workspace.onDidChangeConfiguration(async (e) => {
-      if (e.affectsConfiguration("rubyEnvironments")) {
-        await this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
-      }
-    });
-    context.subscriptions.push(configWatcher);
-
-    // Register command to select Ruby installation
-    const selectRuby = vscode.commands.registerCommand("ruby-environments.selectRuby", async () => {
-      await this.selectRuby();
-    });
-    context.subscriptions.push(selectRuby);
+    this.workspace = workspace;
+    this.changeEmitter = changeEmitter;
   }
 
-  async activate(workspace: vscode.WorkspaceFolder | undefined): Promise<void> {
+  async activate(): Promise<void> {
     // Load Ruby definition from configuration and emit change event
-    await this.updateRubyDefinition(workspace);
+    await this.updateRubyDefinition();
   }
 
   getRuby(): OptionalRubyDefinition {
     return this.currentRubyDefinition;
   }
 
-  get onDidRubyChange(): vscode.Event<RubyChangeEvent> {
-    return this.changeEmitter.event;
-  }
-
-  private async updateRubyDefinition(workspace: vscode.WorkspaceFolder | undefined): Promise<void> {
-    this.currentRubyDefinition = await this.getRubyDefinitionFromConfig(workspace);
+  async updateRubyDefinition(): Promise<void> {
+    this.currentRubyDefinition = await this.getRubyDefinitionFromConfig();
     this.changeEmitter.fire({
-      workspace: workspace,
+      workspace: this.workspace.workspaceFolder,
       ruby: this.currentRubyDefinition,
     });
   }
 
-  private async getRubyDefinitionFromConfig(
-    workspace: vscode.WorkspaceFolder | undefined,
-  ): Promise<OptionalRubyDefinition> {
+  private async getRubyDefinitionFromConfig(): Promise<OptionalRubyDefinition> {
     const rubyPath = this.getRubyPath();
 
     if (!rubyPath) {
@@ -79,7 +62,7 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
         shell = vscode.env.shell;
       }
 
-      const cwd = workspace?.uri.fsPath || process.cwd();
+      const cwd = this.workspace.uri.fsPath;
 
       const result = await asyncExec(command, {
         cwd,
@@ -96,11 +79,13 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
   }
 
   private getRubyPath(): string | undefined {
-    // First check workspace state (set by the selectRuby command)
-    const workspaceRubyPath = this.context.workspaceState.get<string>("rubyPath");
+    const workspaceKey = this.workspace.getStorageKey();
 
-    // Then fall back to configuration
-    const config = vscode.workspace.getConfiguration("rubyEnvironments");
+    // First check workspace state (set by the selectRuby command) for this specific workspace
+    const workspaceRubyPath = this.context.workspaceState.get<string>(workspaceKey);
+
+    // Then fall back to workspace-specific configuration
+    const config = vscode.workspace.getConfiguration("rubyEnvironments", this.workspace.uri);
     const configuredRubyPath = config.get<string>("rubyPath");
 
     return workspaceRubyPath || configuredRubyPath;
@@ -130,8 +115,9 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     };
   }
 
-  private async selectRuby(): Promise<void> {
+  async selectRuby(): Promise<void> {
     const rubyPath = this.getRubyPath();
+    const workspaceName = this.workspace.name;
 
     // Show options for how to set the path
     const option = await vscode.window.showQuickPick(
@@ -140,7 +126,7 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
         { label: "$(edit) Enter path manually...", value: "manual" },
       ],
       {
-        placeHolder: `Current path: ${rubyPath || "not set"}`,
+        placeHolder: `Current path for ${workspaceName}: ${rubyPath || "not set"}`,
       },
     );
 
@@ -168,7 +154,7 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
       }
     } else if (option.value === "manual") {
       newPath = await vscode.window.showInputBox({
-        prompt: "Enter Ruby executable path",
+        prompt: `Enter Ruby executable path for ${workspaceName}`,
         value: rubyPath,
         placeHolder: "ruby",
         validateInput: (value) => {
@@ -181,9 +167,10 @@ export class RubyEnvironmentManager implements RubyEnvironmentsApi {
     }
 
     if (newPath) {
-      await this.context.workspaceState.update("rubyPath", newPath);
-      await this.updateRubyDefinition(vscode.workspace.workspaceFolders?.[0]);
-      vscode.window.showInformationMessage(`Ruby executable path updated to ${newPath}`);
+      const workspaceKey = this.workspace.getStorageKey();
+      await this.context.workspaceState.update(workspaceKey, newPath);
+      await this.updateRubyDefinition();
+      vscode.window.showInformationMessage(`Ruby executable path for ${workspaceName} updated to ${newPath}`);
     }
   }
 }

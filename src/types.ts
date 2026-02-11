@@ -48,10 +48,12 @@ export interface RubyChangeEvent {
  * The public API that gets exposed to other extensions that depend on Ruby environments
  */
 export interface RubyEnvironmentsApi {
-  /** Activate the extension for a specific workspace */
-  activate: (workspace: vscode.WorkspaceFolder | undefined) => Promise<void>;
-  /** Get the current Ruby definition */
-  getRuby: () => OptionalRubyDefinition;
-  /** Event that fires when the Ruby environment changes */
+  /** Activate all Ruby environments on extension load */
+  activate: () => Promise<void>;
+  /** Ensure the Ruby environment is activated for a specific workspace folder */
+  activateWorkspace: (workspace: vscode.WorkspaceFolder | undefined) => Promise<void>;
+  /** Get the Ruby definition for a specific workspace folder */
+  getRuby: (workspace: vscode.WorkspaceFolder | undefined) => OptionalRubyDefinition;
+  /** Event that fires when the Ruby environment changes for any workspace */
   onDidRubyChange: vscode.Event<RubyChangeEvent>;
 }
