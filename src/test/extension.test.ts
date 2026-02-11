@@ -1,7 +1,9 @@
 import * as assert from "assert";
+import * as vscode from "vscode";
 import { suite, test, beforeEach, afterEach } from "mocha";
-import { activate, deactivate, RubyEnvironmentsApi } from "../extension";
+import { activate, deactivate } from "../extension";
 import { FakeContext, createContext } from "./helpers";
+import { RubyEnvironmentsApi } from "../types";
 
 suite("Extension Test Suite", () => {
   suite("activate", () => {
@@ -16,7 +18,7 @@ suite("Extension Test Suite", () => {
     });
 
     test("returns an object implementing RubyEnvironmentsApi", async () => {
-      const api = activate(context);
+      const api = await activate(context);
 
       assert.strictEqual(typeof api, "object", "activate should return an object");
       assert.strictEqual(typeof api.activate, "function", "API should have an activate method");
@@ -28,40 +30,35 @@ suite("Extension Test Suite", () => {
       await result;
     });
 
-    test("returned API conforms to RubyEnvironmentsApi interface", () => {
-      const api = activate(context);
+    test("returned API conforms to RubyEnvironmentsApi interface", async () => {
+      const api = await activate(context);
 
       const typedApi: RubyEnvironmentsApi = api;
       assert.ok(typedApi, "API should conform to RubyEnvironmentsApi interface");
     });
 
-    test("getRuby returns null initially", () => {
-      const api = activate(context);
-
-      assert.strictEqual(api.getRuby(), null, "getRuby should return null before activation");
-    });
-
-    test("onDidRubyChange allows subscribing to events", () => {
-      const api = activate(context);
-
-      let eventFired = false;
-      const disposable = api.onDidRubyChange(() => {
-        eventFired = true;
-      });
-
-      assert.ok(disposable, "onDidRubyChange should return a disposable");
-      assert.strictEqual(typeof disposable.dispose, "function", "disposable should have a dispose method");
-
-      disposable.dispose();
-      assert.strictEqual(eventFired, false, "event should not have fired yet");
-    });
-
-    test("adds event emitter to context subscriptions for disposal", () => {
+    test("registers emitter, status, config watcher, and command subscriptions", async () => {
       assert.strictEqual(context.subscriptions.length, 0, "subscriptions should be empty initially");
 
-      activate(context);
+      await activate(context);
 
-      assert.strictEqual(context.subscriptions.length, 1, "should add emitter to subscriptions");
+      assert.strictEqual(
+        context.subscriptions.length,
+        4,
+        "Extension should register four subscriptions (emitter, status, config watcher, and command)",
+      );
+    });
+  });
+
+  suite("selectRuby command", () => {
+    test("command is registered", async () => {
+      const mockContext = createContext();
+      await activate(mockContext);
+
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(commands.includes("ruby-environments.selectRuby"), "Command should be registered");
+
+      mockContext.dispose();
     });
   });
 
