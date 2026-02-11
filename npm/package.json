@@ -1,0 +1,24 @@
+{
+  "name": "@shopify/ruby-environments-types",
+  "description": "Type definitions for the Ruby Environments VS Code extension",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shopify/ruby-environments.git"
+  },
+  "license": "MIT",
+  "types": "./extension.d.ts",
+  "files": [
+    "extension.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc ../src/extension.ts --emitDeclarationOnly --declaration --declarationDir . --moduleResolution node --skipLibCheck",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ruby",
+    "vscode",
+    "types",
+    "typescript"
+  ]
+}

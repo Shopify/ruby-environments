@@ -1,5 +1,7 @@
 name: ruby-environments
 
+nix: true
+
 up:
   - node:
       yarn: true

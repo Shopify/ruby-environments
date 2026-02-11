@@ -16,6 +16,7 @@ jobs:
         with:
           node-version: "22.17.0"
           cache: "yarn"
+          registry-url: "https://registry.npmjs.org"
 
       - name: 📦 Install dependencies
         run: yarn --frozen-lockfile
@@ -33,6 +34,14 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
+      - name: Publish types to npm
+        if: "!github.event.release.prerelease"
+        run: |
+          cd npm
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       # Prereleases
       - name: Package and publish prerelease extension in the marketplace
         if: "github.event.release.prerelease"
@@ -41,3 +50,11 @@ jobs:
           node_modules/.bin/vsce publish --pre-release --packagePath ruby-environments.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish prerelease types to npm
+        if: "github.event.release.prerelease"
+        run: |
+          cd npm
+          npm publish --access public --tag next
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
