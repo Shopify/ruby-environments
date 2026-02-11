@@ -1,11 +1,10 @@
 import * as vscode from "vscode";
-import { RubyEnvironmentManager } from "./rubyEnvironment";
+import { RubyEnvironmentManager } from "./rubyEnvironmentManager";
 import { RubyEnvironmentsApi } from "./types";
 
 export async function activate(context: vscode.ExtensionContext): Promise<RubyEnvironmentsApi> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   const manager = new RubyEnvironmentManager(context);
-  await manager.activate(workspaceFolder);
+  await manager.activate();
   return manager;
 }
 

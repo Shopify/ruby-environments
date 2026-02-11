@@ -8,6 +8,7 @@ need to activate the Ruby environment in order to launch Ruby executables, such 
 ## Features
 
 - **Automatic Ruby detection**: Discovers the Ruby interpreter installed on your machine
+- **Multi-workspace support**: Each workspace folder can have its own independent Ruby environment configuration
 - **Version manager integrations**: Supports popular version managers including:
   - [chruby](https://github.com/postmodern/chruby)
   - [rbenv](https://github.com/rbenv/rbenv)
@@ -54,20 +55,28 @@ if (rubyEnvExtension) {
 
 ### Activating the Ruby Environment
 
-Request the extension to activate Ruby for a specific workspace:
+The extension automatically activates all workspace folders when it loads. If you need to ensure a specific workspace is activated:
 
 ```typescript
-await api.activate(vscode.workspace.workspaceFolders?.[0]);
+// Activate a specific workspace folder
+await api.activateWorkspace(vscode.workspace.workspaceFolders?.[0]);
+
+// Or activate without a workspace (uses current working directory)
+await api.activateWorkspace(undefined);
 ```
 
 ### Getting the Current Ruby Definition
 
-Retrieve the currently activated Ruby environment:
+Retrieve the Ruby environment for a specific workspace folder:
 
 ```typescript
 import type { RubyDefinition } from "@shopify/ruby-environments-types";
 
-const ruby: RubyDefinition | null = api.getRuby();
+// Get Ruby for a specific workspace folder
+const ruby: RubyDefinition | null = api.getRuby(vscode.workspace.workspaceFolders?.[0]);
+
+// Or get Ruby for the default workspace (when no folder is open)
+const ruby: RubyDefinition | null = api.getRuby(undefined);
 
 if (ruby === null) {
   console.log("Ruby environment not yet activated");
@@ -88,9 +97,9 @@ Listen for changes to the Ruby environment (e.g., when the user switches Ruby ve
 import type { RubyChangeEvent } from "@shopify/ruby-environments-types";
 
 const disposable = api.onDidRubyChange((event: RubyChangeEvent) => {
-  console.log(`Ruby changed in workspace: ${event.workspace?.name}`);
+  console.log(`Ruby changed in workspace: ${event.workspace?.name || "default"}`);
 
-  if (!event.ruby.error) {
+  if (event.ruby && !event.ruby.error) {
     console.log(`New Ruby version: ${event.ruby.rubyVersion}`);
   }
 });
@@ -98,6 +107,8 @@ const disposable = api.onDidRubyChange((event: RubyChangeEvent) => {
 // Add to your extension's subscriptions for automatic cleanup
 context.subscriptions.push(disposable);
 ```
+
+**Note**: This event fires for Ruby environment changes in any workspace folder. Use `event.workspace` to determine which workspace was affected.
 
 ### Extension Dependency
 
